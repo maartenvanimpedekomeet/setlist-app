@@ -135,11 +135,12 @@ button{cursor:pointer;font:inherit;border:none;border-radius:var(--r-sm);display
 /* ── BREAK ── */
 .si-break{background:transparent;border:1.5px dashed var(--border);box-shadow:none}
 .si-break:hover{box-shadow:none;border-color:var(--text3)}
-.break-inner{display:flex;align-items:center;gap:8px;padding:7px 10px}
-.bl{flex:1;height:1px;background:var(--border)}
-.bi{background:transparent;border:none;text-align:center;font:inherit;font-style:italic;color:var(--text2);font-size:13px;width:100px;outline:none;min-width:0}
-.bi:focus{border-bottom:1.5px solid var(--accent)}
-.break-dur{background:var(--card2);border:1.5px solid var(--border-light);border-radius:var(--r-sm);padding:3px 7px;font:inherit;font-size:12px;color:var(--text2);width:58px;text-align:center;font-variant-numeric:tabular-nums}
+.break-inner{display:flex;align-items:flex-start;gap:8px;padding:7px 10px}
+.bi-icon{color:var(--text3);font-size:16px;line-height:1;margin-top:4px;flex-shrink:0}
+.bi-text{flex:1;background:transparent;border:none;font:inherit;font-style:italic;color:var(--text);font-size:13.5px;line-height:1.55;outline:none;resize:none;min-width:0;overflow:hidden;padding:0}
+.bi-text:focus{border-bottom:1.5px solid var(--accent);margin-bottom:-1.5px}
+.bi-text::placeholder{color:var(--text3)}
+.break-dur{background:var(--card2);border:1.5px solid var(--border-light);border-radius:var(--r-sm);padding:3px 6px;font:inherit;font-size:11.5px;color:var(--text3);width:50px;text-align:center;font-variant-numeric:tabular-nums;flex-shrink:0;margin-top:2px}
 .break-dur:focus{outline:none;border-color:var(--accent)}
 
 /* ── NOTE ── */
@@ -454,7 +455,8 @@ function buildItem(item,idx,all){
     const tags=[
       s.key?`<span class="tag">${esc(s.key)}</span>`:'',
       s.bpm?`<span class="tag">${s.bpm}</span>`:'',
-      `<span class="tag" style="background:${tc}1a;color:${tc};outline:1px solid ${tc}40;font-weight:700">${esc(tl)}</span>`
+      `<span class="tag" style="background:${tc}1a;color:${tc};outline:1px solid ${tc}40;font-weight:700">${esc(tl)}</span>`,
+      s.dur?`<span class="tag" style="color:var(--text3)">${fmtDur(s.dur)}</span>`:''
     ].filter(Boolean).join('');
     const edot=s.energy&&s.energy!=='other'?`<span class="${edotClass(s.energy)}" title="${esc(s.energy)}"></span>`:'';
     const has=item.hint||item.note;
@@ -478,11 +480,10 @@ function buildItem(item,idx,all){
     const durVal=item.dur?fmtDur(item.dur):'';
     el.innerHTML=`<div class="break-inner">
       <span class="drag-h">⠿</span>${sortB}
-      <span class="bl"></span>
-      <input class="bi" value="${esc(item.text||'Pauze')}" onchange="updItem('${item.id}','text',this.value)" onclick="event.stopPropagation()" title="Label">
+      <span class="bi-icon">—</span>
+      <textarea class="bi-text" rows="1" placeholder="Pauze / aankondiging…" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onchange="updItem('${item.id}','text',this.value)" onclick="event.stopPropagation()">${esc(item.text||'')}</textarea>
       <input type="text" class="break-dur" value="${esc(durVal)}" placeholder="0:00" title="Duur (m:ss)" onchange="updBreakDur('${item.id}',this.value)" onclick="event.stopPropagation()">
-      <span class="bl"></span>
-      <button class="btn-ghost btn-sm btn-danger" style="margin-left:2px" onclick="removeItem('${item.id}')">✕</button>
+      <button class="btn-ghost btn-sm btn-danger" onclick="removeItem('${item.id}')">✕</button>
     </div>`;
   } else if(item.type==='note'){
     el.innerHTML=`<div class="note-row">
@@ -703,12 +704,11 @@ async function doCopy(){
 }
 
 // ── FIREBASE SYNC ──
-const FB_CFG_KEY = 'sl-firebase-cfg';
-let fbCfg = null;
-try { fbCfg = JSON.parse(localStorage.getItem(FB_CFG_KEY)||'null') } catch(e){}
+const FB_URL = 'https://setlist-app-42fb4-default-rtdb.europe-west1.firebasedatabase.app';
+const FB_SECRET = 'QpQJM04at30S8yyPaDco2FehDYYVWzfgGuvYLLR4';
 
-function fbUrl(){ return fbCfg?.url?.replace(/\/+$/,'') || null }
-function fbAuth(){ return fbCfg?.secret || null }
+function fbUrl(){ return FB_URL }
+function fbAuth(){ return FB_SECRET }
 
 async function fbSave(data){
   const url=fbUrl(), auth=fbAuth(); if(!url||!auth) return;
@@ -750,50 +750,16 @@ function setSyncStatus(s){ // 'ok' | 'err' | 'syncing' | 'off'
 
 // ── DATA ──
 function showDataModal(){
-  const cfg = fbCfg || {};
-  const connected = !!(cfg.url && cfg.secret);
-  showModal(`<div class="mh"><span class="mt">Data &amp; Cloud Sync</span><button class="btn-ghost" onclick="hideModal()">✕</button></div>
+  showModal(`<div class="mh"><span class="mt">Data beheren</span><button class="btn-ghost" onclick="hideModal()">✕</button></div>
     <div class="mb">
-      <div style="background:var(--accent-bg);border:1.5px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px">
-        <div style="font-weight:600;font-size:13px">☁ Firebase Cloud Sync</div>
-        <div style="font-size:12.5px;color:var(--text2)">Sla data op in Firebase zodat alle browsers dezelfde data zien. <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent)">→ Firebase Console</a></div>
-        <div class="fg"><label>Database URL</label><input type="text" id="fb-url" value="${esc(cfg.url||'')}" placeholder="https://mijn-project-default-rtdb.firebaseio.com"></div>
-        <div class="fg"><label>Database Secret</label><input type="password" id="fb-sec" value="${esc(cfg.secret||'')}" placeholder="Plak hier het secret…" autocomplete="off"></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-accent btn-sm" onclick="saveFbConfig()">Opslaan &amp; testen</button>
-          ${connected?`<button class="btn btn-sm btn-danger btn-ghost" onclick="clearFbConfig()">Verbinding verwijderen</button>`:''}
-          <span id="fb-status" style="font-size:12px;color:var(--text2)">${connected?'✓ Geconfigureerd':''}</span>
-        </div>
-      </div>
+      <div style="background:var(--accent-bg);border:1.5px solid var(--border);border-radius:var(--r);padding:12px;font-size:12.5px;color:var(--text2)">☁ <strong style="color:var(--text)">Cloud sync actief</strong> — alle wijzigingen worden automatisch opgeslagen.</div>
       <hr style="border:none;border-top:1px solid var(--border)">
-      <p style="font-size:12.5px;color:var(--text2)">Of exporteer je data als JSON voor backup.</p>
+      <p style="font-size:12.5px;color:var(--text2)">Exporteer je data als JSON voor backup.</p>
       <button class="btn btn-sm" onclick="exportData()" style="width:100%">⬇ Exporteer data (kopieer JSON)</button>
       <div class="fg" style="margin-top:8px"><label>Importeer data</label><textarea id="imp-j" class="di" rows="4" placeholder="Plak hier je geëxporteerde JSON…"></textarea></div>
       <button class="btn btn-sm" onclick="importData()" style="width:100%">⬆ Importeer data</button>
     </div>
     <div class="mf"><button class="btn" onclick="hideModal()">Sluiten</button></div>`);
-}
-async function saveFbConfig(){
-  const url=document.getElementById('fb-url')?.value.trim();
-  const secret=document.getElementById('fb-sec')?.value.trim();
-  const st=document.getElementById('fb-status');
-  if(!url||!secret){if(st)st.textContent='Vul beide velden in';return}
-  if(st)st.textContent='Testen…';
-  const ok = await fbTest(url,secret);
-  if(ok){
-    fbCfg={url,secret}; localStorage.setItem(FB_CFG_KEY,JSON.stringify(fbCfg));
-    if(st)st.textContent='✓ Verbonden!';
-    await fbSave({bands:S.bands,songs:S.songs,setlists:S.setlists,items:S.items});
-    toast('Cloud sync actief!');
-    setSyncStatus('ok');
-  } else {
-    if(st)st.textContent='✗ Verbinding mislukt — controleer URL en secret';
-    setSyncStatus('err');
-  }
-}
-function clearFbConfig(){
-  if(!confirm('Cloud sync verwijderen?'))return;
-  fbCfg=null; localStorage.removeItem(FB_CFG_KEY); setSyncStatus('off'); showDataModal();
 }
 function exportData(){
   const data=JSON.stringify({bands:S.bands,songs:S.songs,setlists:S.setlists,items:S.items},null,2);
