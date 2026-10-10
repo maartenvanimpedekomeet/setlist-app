@@ -135,12 +135,11 @@ button{cursor:pointer;font:inherit;border:none;border-radius:var(--r-sm);display
 /* ── BREAK ── */
 .si-break{background:transparent;border:1.5px dashed var(--border);box-shadow:none}
 .si-break:hover{box-shadow:none;border-color:var(--text3)}
-.break-inner{display:flex;align-items:flex-start;gap:8px;padding:7px 10px}
-.bi-icon{color:var(--text3);font-size:16px;line-height:1;margin-top:4px;flex-shrink:0}
-.bi-text{flex:1;background:transparent;border:none;font:inherit;font-style:italic;color:var(--text);font-size:13.5px;line-height:1.55;outline:none;resize:none;min-width:0;overflow:hidden;padding:0}
-.bi-text:focus{border-bottom:1.5px solid var(--accent);margin-bottom:-1.5px}
+.break-inner{display:flex;align-items:center;gap:8px;padding:7px 10px}
+.bi-text{flex:1;background:transparent;border:none;font:inherit;font-style:italic;color:var(--text);font-size:13.5px;line-height:1.55;outline:none;resize:none;min-width:0;overflow:hidden;padding:2px 0;min-height:26px}
+.bi-text:focus{border-bottom:1.5px solid var(--accent)}
 .bi-text::placeholder{color:var(--text3)}
-.break-dur{background:var(--card2);border:1.5px solid var(--border-light);border-radius:var(--r-sm);padding:3px 6px;font:inherit;font-size:11.5px;color:var(--text3);width:50px;text-align:center;font-variant-numeric:tabular-nums;flex-shrink:0;margin-top:2px}
+.break-dur{background:var(--card2);border:1.5px solid var(--border-light);border-radius:var(--r-sm);padding:3px 6px;font:inherit;font-size:11.5px;color:var(--text3);width:52px;text-align:center;font-variant-numeric:tabular-nums;flex-shrink:0}
 .break-dur:focus{outline:none;border-color:var(--accent)}
 
 /* ── NOTE ── */
@@ -481,8 +480,7 @@ function buildItem(item,idx,all){
     const durVal=item.dur?fmtDur(item.dur):'';
     el.innerHTML=`<div class="break-inner">
       <span class="drag-h">⠿</span>${sortB}
-      <span class="bi-icon">—</span>
-      <textarea class="bi-text" rows="1" placeholder="Pauze / aankondiging…" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onchange="updItem('${item.id}','text',this.value)" onclick="event.stopPropagation()">${esc(item.text||'')}</textarea>
+      <textarea class="bi-text" rows="1" placeholder="Bindtekst / pauze-omschrijving…" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onchange="updItem('${item.id}','text',this.value)" onclick="event.stopPropagation()">${esc(item.text||'')}</textarea>
       <input type="text" class="break-dur" value="${esc(durVal)}" placeholder="0:00" title="Duur (m:ss)" onchange="updBreakDur('${item.id}',this.value)" onclick="event.stopPropagation()">
       <button class="btn-ghost btn-sm btn-danger" onclick="removeItem('${item.id}')">✕</button>
     </div>`;
