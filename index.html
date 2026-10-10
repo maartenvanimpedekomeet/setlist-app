@@ -1,0 +1,777 @@
+<title>Setlist Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* ── TOKENS ── */
+:root {
+  --bg: #f7f5f2;
+  --surface: #edeae4;
+  --card: #ffffff;
+  --card2: #f7f5f2;
+  --border: #dbd7cf;
+  --border-light: #e8e5de;
+  --accent: #7c5c1e;
+  --accent-mid: #a07828;
+  --accent-fg: #ffffff;
+  --accent-bg: rgba(124,92,30,.1);
+  --text: #15130f;
+  --text2: #5c574e;
+  --text3: #9c9890;
+  --danger: #8c2a1c;
+  --success: #1e6840;
+  --warn: #955010;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.06), 0 1px 6px rgba(0,0,0,.04);
+  --shadow: 0 2px 8px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.06);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08);
+  --r: 8px;
+  --r-sm: 5px;
+  color-scheme: light;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d0c0a; --surface:#161410; --card:#1e1c18; --card2:#252220;
+    --border:#302d28; --border-light:#282520;
+    --accent:#c89830; --accent-mid:#b08828; --accent-fg:#0d0c0a; --accent-bg:rgba(200,152,48,.12);
+    --text:#ece8e0; --text2:#8a8278; --text3:#58544e;
+    --danger:#c04030; --success:#489068; --warn:#c07028;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow:0 2px 8px rgba(0,0,0,.35); --shadow-lg:0 8px 32px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d0c0a; --surface:#161410; --card:#1e1c18; --card2:#252220;
+  --border:#302d28; --border-light:#282520;
+  --accent:#c89830; --accent-mid:#b08828; --accent-fg:#0d0c0a; --accent-bg:rgba(200,152,48,.12);
+  --text:#ece8e0; --text2:#8a8278; --text3:#58544e;
+  --danger:#c04030; --success:#489068; --warn:#c07028;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow:0 2px 8px rgba(0,0,0,.35); --shadow-lg:0 8px 32px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5}
+.hidden{display:none!important}
+
+/* ── LOGIN ── */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;padding:24px}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px 36px;width:100%;max-width:360px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;align-items:center;gap:24px}
+.login-logo{font-family:'Instrument Serif',Georgia,serif;font-size:32px;color:var(--accent);letter-spacing:-.02em}
+.login-sub{font-size:13px;color:var(--text2);text-align:center}
+.login-form{width:100%;display:flex;flex-direction:column;gap:12px}
+.login-input{width:100%;padding:11px 14px;background:var(--card2);border:1.5px solid var(--border);border-radius:var(--r);font:inherit;font-size:14px;color:var(--text);transition:border-color .15s}
+.login-input:focus{outline:none;border-color:var(--accent)}
+.login-btn{width:100%;padding:11px;background:var(--accent);color:var(--accent-fg);border:none;border-radius:var(--r);font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.login-btn:hover{opacity:.88}
+.login-err{font-size:12.5px;color:var(--danger);text-align:center;min-height:18px}
+
+/* ── APP SHELL ── */
+.app{display:flex;flex-direction:column;height:100%;overflow:hidden}
+
+/* ── HEADER ── */
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;gap:10px;height:54px;flex-shrink:0;box-shadow:var(--shadow-sm)}
+.app-logo{font-family:'Instrument Serif',Georgia,serif;font-size:20px;color:var(--accent);letter-spacing:-.01em;white-space:nowrap;user-select:none;display:flex;align-items:center;gap:6px}
+.logo-note{font-size:18px;opacity:.7}
+.hd{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.hg{display:flex;align-items:center;gap:6px}
+.hsp{flex:1}
+
+/* ── SELECTS ── */
+select{appearance:none;background:var(--card2);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font:inherit;font-size:13px;padding:5px 26px 5px 9px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23999' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;min-width:130px;max-width:200px;transition:border-color .15s}
+select:focus{outline:none;border-color:var(--accent)}
+
+/* ── BUTTONS ── */
+button{cursor:pointer;font:inherit;border:none;border-radius:var(--r-sm);display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .12s,opacity .12s,box-shadow .12s}
+.btn{padding:6px 12px;font-size:13px;font-weight:500;background:var(--card2);border:1.5px solid var(--border);color:var(--text)}
+.btn:hover{border-color:var(--text3);background:var(--card)}
+.btn-accent{background:var(--accent);color:var(--accent-fg);border:none;padding:6px 14px;font-size:13px;font-weight:600}
+.btn-accent:hover{opacity:.88}
+.btn-sm{padding:4px 9px;font-size:12px}
+.btn-icon{width:30px;height:30px;padding:0;background:transparent;border:1.5px solid var(--border);color:var(--text2);font-size:14px}
+.btn-icon:hover{background:var(--card2);border-color:var(--text3);color:var(--text)}
+.btn-ghost{background:transparent;border:none;color:var(--text2);padding:4px 7px;font-size:13px}
+.btn-ghost:hover{color:var(--text);background:var(--accent-bg)}
+.btn-ghost:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn-danger{color:var(--danger)!important}
+
+/* ── MAIN ── */
+.main{display:flex;flex:1;overflow:hidden;min-height:0}
+.panel{display:flex;flex-direction:column;overflow:hidden}
+.set-panel{flex:1 1 60%;min-width:0}
+.lib-panel{flex:0 0 300px;background:var(--surface);border-left:1px solid var(--border)}
+.panel-head{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--card2)}
+.panel-title{font-family:'Instrument Serif',Georgia,serif;font-size:17px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panel-meta{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ── SETLIST ITEMS ── */
+.items-wrap{flex:1;overflow-y:auto;padding:10px 12px}
+.add-footer{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+
+.si{background:var(--card);border:1.5px solid var(--border-light);border-radius:var(--r);margin-bottom:5px;position:relative;transition:box-shadow .15s,border-color .15s;box-shadow:var(--shadow-sm)}
+.si:hover{box-shadow:var(--shadow)}
+.si.dragging{opacity:.3;box-shadow:none}
+.si.drop-top{border-top:2.5px solid var(--accent)}
+.si.drop-bottom{border-bottom:2.5px solid var(--accent)}
+
+.si-head{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 8px}
+.drag-h{color:var(--text3);font-size:13px;cursor:grab;padding:3px 4px;flex-shrink:0;user-select:none;opacity:.5;transition:opacity .12s}
+.drag-h:hover{opacity:1}
+.drag-h:active{cursor:grabbing}
+.item-n{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums;font-weight:600;min-width:18px;text-align:right;flex-shrink:0}
+.item-t{font-weight:600;font-size:13.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stags{display:flex;gap:4px;flex-shrink:0;align-items:center}
+.tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--accent-bg);color:var(--text2);font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:.01em}
+.iac{display:flex;gap:1px;flex-shrink:0}
+
+/* ── ITEM DETAILS ── */
+.si-details{border-top:1px solid var(--border-light);padding:8px 10px 10px 42px;display:flex;flex-direction:column;gap:8px}
+.dl{font-size:10.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.di{width:100%;background:var(--card2);border:1.5px solid var(--border-light);border-radius:var(--r-sm);padding:6px 9px;font:inherit;font-size:13px;color:var(--text);resize:none;transition:border-color .15s}
+.di:focus{outline:none;border-color:var(--accent)}
+.di::placeholder{color:var(--text3)}
+
+/* ── TUNING WARN ── */
+.tw{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--warn);font-weight:600;padding:4px 10px 4px 42px;background:rgba(149,80,16,.07);border-radius:6px;margin-bottom:4px}
+
+/* ── BREAK ── */
+.si-break{background:transparent;border:1.5px dashed var(--border);box-shadow:none}
+.si-break:hover{box-shadow:none;border-color:var(--text3)}
+.break-inner{display:flex;align-items:center;gap:8px;padding:7px 10px}
+.bl{flex:1;height:1px;background:var(--border)}
+.bi{background:transparent;border:none;text-align:center;font:inherit;font-style:italic;color:var(--text2);font-size:13px;width:100px;outline:none;min-width:0}
+.bi:focus{border-bottom:1.5px solid var(--accent)}
+.break-dur{background:var(--card2);border:1.5px solid var(--border-light);border-radius:var(--r-sm);padding:3px 7px;font:inherit;font-size:12px;color:var(--text2);width:58px;text-align:center;font-variant-numeric:tabular-nums}
+.break-dur:focus{outline:none;border-color:var(--accent)}
+
+/* ── NOTE ── */
+.note-row{display:flex;align-items:flex-start;gap:8px;padding:8px 10px}
+.ni{color:var(--text3);font-size:13px;margin-top:3px;flex-shrink:0}
+
+/* ── ENERGY DOT ── */
+.edot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.edot-opener{background:var(--accent)}
+.edot-uptempo{background:var(--warn)}
+.edot-ballad{background:#507098}
+.edot-closer{background:var(--danger)}
+.edot-other{background:var(--text3)}
+
+/* ── EMPTY ── */
+.empty{padding:40px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty-icon{font-size:40px;opacity:.25;line-height:1}
+.empty h3{font-family:'Instrument Serif',Georgia,serif;font-size:20px;color:var(--text)}
+.empty p{font-size:13px;color:var(--text2);max-width:240px;line-height:1.65}
+
+/* ── LIBRARY ── */
+.lib-filter{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.filt{padding:4px 10px;font-size:12px;font-weight:500;background:transparent;border:1.5px solid transparent;border-radius:20px;color:var(--text2);cursor:pointer;transition:all .12s}
+.filt.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.filt:not(.on):hover{background:var(--card);color:var(--text)}
+.lib-list{flex:1;overflow-y:auto;padding:8px 10px}
+.ls{padding:8px 10px;border-radius:var(--r);border:1.5px solid var(--border-light);background:var(--card);margin-bottom:4px;display:flex;align-items:center;gap:9px;cursor:pointer;transition:all .12s;box-shadow:var(--shadow-sm)}
+.ls:hover{box-shadow:var(--shadow);border-color:var(--border);transform:translateX(1px)}
+.ls.in-set{opacity:.4}
+.ls.in-set:hover{opacity:.65}
+.li{flex:1;min-width:0}
+.lt{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lm{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(2px)}
+.modal{background:var(--card);border:1.5px solid var(--border);border-radius:14px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.mh{padding:16px 18px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mt{font-family:'Instrument Serif',Georgia,serif;font-size:20px}
+.mb{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.mf{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;align-items:center}
+
+/* ── FORM ── */
+.fg{display:flex;flex-direction:column;gap:5px}
+.fr{display:flex;gap:10px}
+.fr .fg{flex:1}
+label{font-size:11.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.07em}
+input[type=text],input[type=number],input[type=password],textarea,.fsel{background:var(--card2);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;font:inherit;font-size:13px;color:var(--text);width:100%;transition:border-color .15s}
+input[type=text]:focus,input[type=number]:focus,input[type=password]:focus,textarea:focus,.fsel:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:72px}
+.fsel{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23999' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;padding-right:27px}
+
+/* ── EXPORT PREVIEW ── */
+.exp-wrap{background:var(--card2);border:1.5px solid var(--border);border-radius:var(--r);padding:14px;font-size:12.5px;line-height:1.75;max-height:300px;overflow-y:auto}
+.exp-head{font-family:'Instrument Serif',Georgia,serif;font-size:21px;margin-bottom:2px}
+.exp-sub{color:var(--text2);font-size:13px;margin-bottom:14px}
+.exp-row{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border-light);align-items:baseline}
+.exp-n{color:var(--text3);min-width:20px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
+.exp-s{font-weight:600;flex:1}
+.exp-t{color:var(--text2);font-size:11.5px;white-space:nowrap}
+.exp-hint{padding:2px 0 2px 30px;color:var(--text3);font-style:italic;font-size:12px}
+.exp-break{text-align:center;padding:6px 0;color:var(--text2);font-style:italic;border-bottom:1px solid var(--border-light)}
+.exp-note-p{padding:5px 0;color:var(--text2);font-style:italic;font-size:12px;border-bottom:1px solid var(--border-light)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);color:var(--bg);padding:9px 18px;border-radius:40px;font-size:13px;font-weight:500;z-index:300;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-lg)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── MOBILE ── */
+.mob-tabs{display:none}
+.sort-btns{display:none}
+@media(max-width:620px){
+  .lib-panel{position:fixed;inset:0;z-index:50;background:var(--surface);display:none;flex-direction:column}
+  .lib-panel.mob-show{display:flex}
+  .mob-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0}
+  .mob-tab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:transparent;border-bottom:2.5px solid transparent}
+  .mob-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .set-panel.mob-hide{display:none}
+  .drag-h{display:none}
+  .sort-btns{display:flex;gap:1px}
+  select{min-width:100px;max-width:145px}
+  .header{padding:0 10px;gap:6px}
+}
+@media(min-width:621px){.lib-panel{display:flex!important}}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+</style>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">♩ Setlist</div>
+    <p class="login-sub">Voer het wachtwoord in om verder te gaan.</p>
+    <div class="login-form">
+      <input type="password" class="login-input" id="pw-input" placeholder="Wachtwoord…" autocomplete="current-password">
+      <button class="login-btn" id="pw-btn">Inloggen</button>
+      <div class="login-err" id="pw-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app hidden" id="app">
+  <header class="header">
+    <div class="app-logo"><span class="logo-note">♩</span> Setlist</div>
+    <div class="hd"></div>
+    <div class="hg">
+      <select id="band-sel"></select>
+      <button class="btn-icon" id="btn-band-mgr" title="Bands beheren">⚙</button>
+    </div>
+    <div class="hd"></div>
+    <div class="hg">
+      <select id="set-sel"></select>
+      <button class="btn-icon" id="btn-set-add" title="Nieuwe setlist">+</button>
+      <button class="btn-icon" id="btn-set-dup" title="Setlist dupliceren">⧉</button>
+      <button class="btn-icon" id="btn-set-ren" title="Hernoemen">✎</button>
+      <button class="btn-icon btn-danger" id="btn-set-del" title="Verwijderen">✕</button>
+    </div>
+    <div class="hsp"></div>
+    <button class="btn" id="btn-data" title="Data importeren/exporteren" style="font-size:15px;padding:5px 9px">💾</button>
+    <button class="btn btn-accent" id="btn-export">↓ Word</button>
+  </header>
+
+  <div class="mob-tabs">
+    <button class="mob-tab on" id="tab-set">Setlist</button>
+    <button class="mob-tab" id="tab-lib">Bibliotheek</button>
+  </div>
+
+  <main class="main">
+    <section class="panel set-panel" id="set-panel">
+      <div class="panel-head">
+        <span class="panel-title" id="set-title">Setlist</span>
+        <span class="panel-meta" id="set-stats"></span>
+      </div>
+      <div class="items-wrap" id="items-wrap">
+        <div id="set-empty"></div>
+        <div id="set-items"></div>
+      </div>
+      <div class="add-footer">
+        <button class="btn btn-sm" id="btn-add-break">+ Pauze</button>
+        <button class="btn btn-sm" id="btn-add-note">+ Notitie</button>
+      </div>
+    </section>
+
+    <aside class="panel lib-panel" id="lib-panel">
+      <div class="panel-head">
+        <span class="panel-title">Bibliotheek</span>
+        <button class="btn btn-sm btn-accent" id="btn-new-song">+ Nummer</button>
+      </div>
+      <div class="lib-filter">
+        <button class="filt on" id="filt-avail">Beschikbaar</button>
+        <button class="filt" id="filt-all">Alle nummers</button>
+      </div>
+      <div class="lib-list" id="lib-list"></div>
+    </aside>
+  </main>
+</div>
+
+<div class="overlay hidden" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── AUTH ──
+const PW_KEY = 'sl-auth-v1';
+const PW_HASH = btoa(unescape(encodeURIComponent('ApresSk1!')));
+
+function checkAuth(){
+  if(sessionStorage.getItem(PW_KEY) === PW_HASH){ showApp(); return }
+  document.getElementById('login-screen').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('pw-input')?.focus(), 80);
+}
+function showApp(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+}
+document.getElementById('pw-btn').addEventListener('click', doLogin);
+document.getElementById('pw-input').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin() });
+function doLogin(){
+  const val = document.getElementById('pw-input').value;
+  if(btoa(unescape(encodeURIComponent(val))) === PW_HASH){
+    sessionStorage.setItem(PW_KEY, PW_HASH);
+    showApp();
+  } else {
+    document.getElementById('pw-err').textContent = 'Fout wachtwoord. Probeer opnieuw.';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+    setTimeout(()=>document.getElementById('pw-err').textContent='', 2500);
+  }
+}
+
+// ── STATE ──
+const SK = 'setlist-v4';
+let S = { bands:[], songs:[], setlists:[], items:[], bandId:null, setId:null, filter:'avail' };
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6) }
+function save(){ try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){} }
+function load(){ try{ const d=JSON.parse(localStorage.getItem(SK)||'null'); if(d)Object.assign(S,d) }catch(e){} }
+
+function getBand(id){ return S.bands.find(b=>b.id===id) }
+function getSong(id){ return S.songs.find(s=>s.id===id) }
+function getSet(id){ return S.setlists.find(s=>s.id===id) }
+function bandSongs(bid){ return S.songs.filter(s=>s.bandId===bid) }
+function bandSets(bid){ return S.setlists.filter(s=>s.bandId===bid) }
+function setItems(sid){ return S.items.filter(i=>i.setId===sid).sort((a,b)=>a.pos-b.pos) }
+function inSetIds(sid){ return new Set(S.items.filter(i=>i.setId===sid&&i.type==='song').map(i=>i.songId)) }
+function fmtDur(s){ if(!s)return ''; return Math.floor(s/60)+':'+String(s%60).padStart(2,'0') }
+function parseDur(str){ if(!str)return 0; const p=String(str).split(':'); return p.length===2?parseInt(p[0])*60+(parseInt(p[1])||0):parseInt(str)||0 }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function edotClass(e){ return 'edot edot-'+(e||'other') }
+
+// ── TUNING COLORS ──
+function tuningColor(tuning){
+  const t=(tuning||'E').toLowerCase().trim();
+  if(!t||t==='e'||t==='standard'||t==='estandard'||t==='e standard') return '#222222';
+  if(t.includes('eb')||t.includes('e♭')||t.includes('d#')) return '#c05a00';
+  if(t.startsWith('drop d')||t==='d'||t.startsWith('d ')) return '#b02020';
+  if(t.startsWith('drop c')||t==='c'||t.startsWith('c ')) return '#1a60a0';
+  if(t[0]==='d') return '#b02020';
+  if(t[0]==='c') return '#1a60a0';
+  if(t[0]==='b') return '#1a7840';
+  if(t[0]==='a') return '#806010';
+  if(t[0]==='g') return '#6a30a0';
+  if(t[0]==='f') return '#904000';
+  return '#666';
+}
+
+// ── RENDER ──
+function render(){ rBands(); rSets(); rSetlist(); rLib() }
+
+function rBands(){
+  const el=document.getElementById('band-sel');
+  if(!S.bands.length){ el.innerHTML='<option value="">Geen bands</option>'; return }
+  el.innerHTML=S.bands.map(b=>`<option value="${b.id}"${b.id===S.bandId?' selected':''}>${esc(b.name)}</option>`).join('');
+}
+
+function rSets(){
+  const el=document.getElementById('set-sel');
+  if(!S.bandId){ el.innerHTML='<option value="">Kies een band</option>'; return }
+  const list=bandSets(S.bandId);
+  if(!list.length){ el.innerHTML='<option value="">Geen setlists</option>'; return }
+  el.innerHTML=list.map(s=>`<option value="${s.id}"${s.id===S.setId?' selected':''}>${esc(s.name)}</option>`).join('');
+}
+
+function rSetlist(){
+  const tEl=document.getElementById('set-title');
+  const sEl=document.getElementById('set-stats');
+  const eEl=document.getElementById('set-empty');
+  const iEl=document.getElementById('set-items');
+  if(!S.bandId){
+    tEl.textContent='Setlist'; sEl.textContent=''; iEl.innerHTML='';
+    eEl.innerHTML=`<div class="empty"><div class="empty-icon">♩</div><h3>Welkom</h3><p>Maak een band aan om te beginnen.</p><button class="btn btn-accent" style="margin-top:4px" onclick="showBandModal()">+ Nieuwe band</button></div>`;
+    return;
+  }
+  if(!S.setId){
+    const band=getBand(S.bandId);
+    tEl.textContent='Setlist'; sEl.textContent=''; iEl.innerHTML='';
+    eEl.innerHTML=`<div class="empty"><div class="empty-icon">♪</div><h3>Geen setlist</h3><p>Maak een setlist aan voor ${esc(band?.name||'deze band')}.</p><button class="btn btn-accent" style="margin-top:4px" onclick="showNewSetModal()">+ Nieuwe setlist</button></div>`;
+    return;
+  }
+  const sl=getSet(S.setId);
+  tEl.textContent=sl?.name||'';
+  const its=setItems(S.setId);
+  const songSec=its.filter(i=>i.type==='song').reduce((t,i)=>{ const s=getSong(i.songId); return t+(s?.dur||0) },0);
+  const breakSec=its.filter(i=>i.type==='break').reduce((t,i)=>t+(i.dur||0),0);
+  const total=songSec+breakSec;
+  const songCount=its.filter(i=>i.type==='song').length;
+  sEl.textContent=songCount+' nr'+(songCount!==1?'s':'')+(total>0?' · '+fmtDur(total):'');
+  if(!its.length){
+    eEl.innerHTML=`<div class="empty"><div class="empty-icon">♪</div><h3>Lege setlist</h3><p>Klik op nummers in de bibliotheek om ze toe te voegen.</p></div>`;
+    iEl.innerHTML=''; return;
+  }
+  eEl.innerHTML=''; iEl.innerHTML='';
+  its.forEach((item,idx)=>{
+    if(item.type==='song'&&idx>0){
+      const prev=its.slice(0,idx).reverse().find(i=>i.type==='song');
+      if(prev){
+        const ps=getSong(prev.songId),ts=getSong(item.songId);
+        const pt=ps?.tuning||'E', tt=ts?.tuning||'E';
+        if(ps&&ts&&pt!==tt){
+          const w=document.createElement('div');
+          w.className='tw';
+          w.innerHTML=`⚠ Stemwisseling: <strong>${esc(pt)}</strong> → <strong>${esc(tt)}</strong>`;
+          iEl.appendChild(w);
+        }
+      }
+    }
+    iEl.appendChild(buildItem(item,idx,its));
+  });
+  initDrag();
+}
+
+function buildItem(item,idx,all){
+  const el=document.createElement('div');
+  el.className='si'; el.dataset.id=item.id;
+  const sn=all.slice(0,idx+1).filter(i=>i.type==='song').length;
+  const sortB=`<span class="sort-btns"><button class="btn-ghost btn-sm" onclick="moveItem('${item.id}',-1)">↑</button><button class="btn-ghost btn-sm" onclick="moveItem('${item.id}',1)">↓</button></span>`;
+
+  if(item.type==='song'){
+    const s=getSong(item.songId); if(!s)return el;
+    const tc=tuningColor(s.tuning||'E');
+    el.style.borderLeft=`3px solid ${tc}`;
+    el.style.borderRadius='0 '+getComputedStyle(document.documentElement).getPropertyValue('--r').trim()+' '+getComputedStyle(document.documentElement).getPropertyValue('--r').trim()+' 0';
+    const tl=s.tuning||'E';
+    const tags=[
+      s.key?`<span class="tag">${esc(s.key)}</span>`:'',
+      s.bpm?`<span class="tag">${s.bpm}</span>`:'',
+      `<span class="tag" style="background:${tc}1a;color:${tc};outline:1px solid ${tc}40;font-weight:700">${esc(tl)}</span>`
+    ].filter(Boolean).join('');
+    const edot=s.energy&&s.energy!=='other'?`<span class="${edotClass(s.energy)}" title="${esc(s.energy)}"></span>`:'';
+    const has=item.hint||item.note;
+    el.innerHTML=`
+      <div class="si-head">
+        <span class="drag-h">⠿</span>${sortB}
+        <span class="item-n">${sn}.</span>
+        <span class="item-t">${esc(s.title)}</span>
+        <div class="stags">${tags}${edot}</div>
+        <div class="iac">
+          <button class="btn-ghost btn-sm" onclick="toggleDet('${item.id}')" title="Bindtekst / notitie">📝</button>
+          <button class="btn-ghost btn-sm btn-danger" onclick="removeItem('${item.id}')" title="Verwijderen">✕</button>
+        </div>
+      </div>
+      <div class="${has?'si-details':'si-details hidden'}" id="det-${item.id}">
+        <div class="fg"><div class="dl">Bindtekst hint</div><textarea class="di" rows="2" placeholder="Hint voor de tekst tussen de nummers…" onchange="updItem('${item.id}','hint',this.value)">${esc(item.hint||'')}</textarea></div>
+        <div class="fg"><div class="dl">Notitie bij nummer</div><input type="text" class="di" placeholder="Bijv. capo 2, intro Em…" value="${esc(item.note||'')}" onchange="updItem('${item.id}','note',this.value)"></div>
+      </div>`;
+  } else if(item.type==='break'){
+    el.classList.add('si-break');
+    const durVal=item.dur?fmtDur(item.dur):'';
+    el.innerHTML=`<div class="break-inner">
+      <span class="drag-h">⠿</span>${sortB}
+      <span class="bl"></span>
+      <input class="bi" value="${esc(item.text||'Pauze')}" onchange="updItem('${item.id}','text',this.value)" onclick="event.stopPropagation()" title="Label">
+      <input type="text" class="break-dur" value="${esc(durVal)}" placeholder="0:00" title="Duur (m:ss)" onchange="updBreakDur('${item.id}',this.value)" onclick="event.stopPropagation()">
+      <span class="bl"></span>
+      <button class="btn-ghost btn-sm btn-danger" style="margin-left:2px" onclick="removeItem('${item.id}')">✕</button>
+    </div>`;
+  } else if(item.type==='note'){
+    el.innerHTML=`<div class="note-row">
+      <span class="drag-h" style="margin-top:2px">⠿</span>${sortB}
+      <span class="ni">📋</span>
+      <textarea class="di" style="flex:1" rows="2" placeholder="Aankondiging / notitie…" onchange="updItem('${item.id}','text',this.value)">${esc(item.text||'')}</textarea>
+      <button class="btn-ghost btn-sm btn-danger" style="margin-top:2px" onclick="removeItem('${item.id}')">✕</button>
+    </div>`;
+  }
+  el.draggable=true;
+  el.addEventListener('dragstart',onDS);
+  el.addEventListener('dragover',onDO);
+  el.addEventListener('dragleave',onDL);
+  el.addEventListener('drop',onDD);
+  el.addEventListener('dragend',onDE);
+  return el;
+}
+
+function rLib(){
+  const c=document.getElementById('lib-list');
+  if(!S.bandId){ c.innerHTML='<div class="empty"><p>Kies een band.</p></div>'; return }
+  const songs=bandSongs(S.bandId);
+  const inSet=S.setId?inSetIds(S.setId):new Set();
+  const show=S.filter==='avail'?songs.filter(s=>!inSet.has(s.id)):songs;
+  if(!songs.length){ c.innerHTML=`<div class="empty"><div class="empty-icon">♬</div><h3>Geen nummers</h3><p>Voeg nummers toe.</p></div>`; return }
+  if(!show.length){ c.innerHTML=`<div class="empty"><p>Alle nummers staan in de setlist.</p><button class="btn btn-sm" style="margin-top:8px" onclick="setFilter('all')">Toon alle nummers</button></div>`; return }
+  c.innerHTML='';
+  show.forEach(s=>{
+    const inS=inSet.has(s.id);
+    const meta=[s.key,s.bpm?s.bpm+' bpm':'',s.tuning||'E',s.dur?fmtDur(s.dur):''].filter(Boolean).join(' · ');
+    const tc=tuningColor(s.tuning||'E');
+    const el=document.createElement('div');
+    el.className='ls'+(inS?' in-set':'');
+    el.style.borderLeft=`3px solid ${tc}`;
+    el.style.borderRadius='0 '+getComputedStyle(document.documentElement).getPropertyValue('--r').trim()+' '+getComputedStyle(document.documentElement).getPropertyValue('--r').trim()+' 0';
+    el.innerHTML=`<span class="${edotClass(s.energy)}"></span><div class="li"><div class="lt">${esc(s.title)}</div><div class="lm">${esc(meta)}</div></div><button class="btn-ghost btn-sm" onclick="event.stopPropagation();showSongModal('${s.id}')" title="Bewerken">✎</button>`;
+    el.addEventListener('click',()=>{ if(S.setId) addSongToSet(s.id); else toast('Maak eerst een setlist aan') });
+    c.appendChild(el);
+  });
+}
+
+// ── ACTIONS ──
+function addBand(name){ const b={id:uid(),name}; S.bands.push(b); S.bandId=b.id; S.setId=null; save(); render() }
+function updBand(id,name){ const b=getBand(id); if(b){b.name=name;save();render()} }
+function delBand(id){
+  const sids=S.setlists.filter(s=>s.bandId===id).map(s=>s.id);
+  S.items=S.items.filter(i=>!sids.includes(i.setId));
+  S.setlists=S.setlists.filter(s=>s.bandId!==id);
+  S.songs=S.songs.filter(s=>s.bandId!==id);
+  S.bands=S.bands.filter(b=>b.id!==id);
+  if(S.bandId===id){ S.bandId=S.bands[0]?.id||null; S.setId=null }
+  save(); render();
+}
+function addSet(name){ const s={id:uid(),bandId:S.bandId,name}; S.setlists.push(s); S.setId=s.id; save(); render() }
+function renSet(id,name){ const s=getSet(id); if(s){s.name=name;save();render()} }
+function dupSet(id){
+  const sl=getSet(id); if(!sl)return;
+  const newId=uid();
+  S.setlists.push({id:newId,bandId:S.bandId,name:sl.name+' (kopie)'});
+  setItems(id).forEach(item=>S.items.push({...item,id:uid(),setId:newId}));
+  S.setId=newId; save(); render(); toast('Setlist gedupliceerd');
+}
+function delSet(id){
+  S.items=S.items.filter(i=>i.setId!==id);
+  S.setlists=S.setlists.filter(s=>s.id!==id);
+  if(S.setId===id){ S.setId=bandSets(S.bandId)[0]?.id||null }
+  save(); render();
+}
+function addSong(data){ S.songs.push({id:uid(),bandId:S.bandId,...data}); save(); render() }
+function updSong(id,data){ const s=getSong(id); if(s){Object.assign(s,data);save();render()} }
+function delSong(id){ S.songs=S.songs.filter(s=>s.id!==id); S.items=S.items.filter(i=>i.songId!==id); save(); render() }
+function addSongToSet(songId){
+  if(!S.setId)return;
+  const its=setItems(S.setId);
+  S.items.push({id:uid(),setId:S.setId,type:'song',songId,pos:its.reduce((m,i)=>Math.max(m,i.pos),-1)+1,hint:'',note:''});
+  save(); render(); toast('Toegevoegd');
+}
+function addBreak(){
+  if(!S.setId){toast('Maak eerst een setlist aan');return}
+  const its=setItems(S.setId);
+  S.items.push({id:uid(),setId:S.setId,type:'break',text:'Pauze',dur:0,pos:its.reduce((m,i)=>Math.max(m,i.pos),-1)+1});
+  save(); render();
+}
+function addNote(){
+  if(!S.setId){toast('Maak eerst een setlist aan');return}
+  const its=setItems(S.setId);
+  S.items.push({id:uid(),setId:S.setId,type:'note',text:'',pos:its.reduce((m,i)=>Math.max(m,i.pos),-1)+1});
+  save(); render();
+}
+function removeItem(id){ S.items=S.items.filter(i=>i.id!==id); save(); render() }
+function updItem(id,f,v){ const i=S.items.find(x=>x.id===id); if(i){i[f]=v;save()} }
+function updBreakDur(id,val){ const i=S.items.find(x=>x.id===id); if(i){i.dur=parseDur(val);save();rSetlist()} }
+function toggleDet(id){ document.getElementById('det-'+id)?.classList.toggle('hidden') }
+function moveItem(id,dir){
+  const its=setItems(S.setId); const idx=its.findIndex(i=>i.id===id); const ni=idx+dir;
+  if(ni<0||ni>=its.length)return;
+  const a=S.items.find(x=>x.id===its[idx].id),b=S.items.find(x=>x.id===its[ni].id);
+  if(a&&b){[a.pos,b.pos]=[b.pos,a.pos];save();render()}
+}
+function setFilter(f){ S.filter=f; document.getElementById('filt-avail').classList.toggle('on',f==='avail'); document.getElementById('filt-all').classList.toggle('on',f==='all'); rLib() }
+
+// ── DRAG ──
+let dId=null,dOvId=null,dSide=null;
+function initDrag(){}
+function onDS(e){ dId=e.currentTarget.dataset.id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move' }
+function onDO(e){
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
+  const t=e.currentTarget; const r=t.getBoundingClientRect(); const side=e.clientY<r.top+r.height/2?'top':'bottom';
+  if(dOvId!==t.dataset.id||dSide!==side){
+    document.querySelectorAll('.drop-top,.drop-bottom').forEach(x=>x.classList.remove('drop-top','drop-bottom'));
+    dOvId=t.dataset.id; dSide=side; t.classList.add(side==='top'?'drop-top':'drop-bottom');
+  }
+}
+function onDL(e){ const t=e.currentTarget; if(!t.contains(e.relatedTarget)){t.classList.remove('drop-top','drop-bottom');if(dOvId===t.dataset.id){dOvId=null;dSide=null}} }
+function onDD(e){
+  e.preventDefault(); const tId=e.currentTarget.dataset.id; if(!dId||dId===tId){cDrag();return}
+  const its=setItems(S.setId); const fi=its.findIndex(i=>i.id===dId),ti=its.findIndex(i=>i.id===tId);
+  if(fi===-1||ti===-1){cDrag();return}
+  const moved=its.splice(fi,1)[0]; let ni=ti;
+  if(fi<ti) ni=dSide==='top'?ti-1:ti; else ni=dSide==='top'?ti:ti+1;
+  ni=Math.max(0,Math.min(its.length,ni)); its.splice(ni,0,moved);
+  its.forEach((it,i)=>{ const x=S.items.find(s=>s.id===it.id); if(x)x.pos=i });
+  save(); render();
+}
+function onDE(e){ e.currentTarget.classList.remove('dragging'); cDrag() }
+function cDrag(){ document.querySelectorAll('.drop-top,.drop-bottom').forEach(x=>x.classList.remove('drop-top','drop-bottom')); dId=null;dOvId=null;dSide=null }
+
+// ── MODALS ──
+function showModal(h){ document.getElementById('modal').innerHTML=h; document.getElementById('overlay').classList.remove('hidden') }
+function hideModal(){ document.getElementById('overlay').classList.add('hidden') }
+
+function showBandModal(){
+  showModal(`<div class="mh"><span class="mt">Bands</span><button class="btn-ghost" onclick="hideModal()">✕</button></div>
+    <div class="mb">
+      <div id="blist">${S.bands.map(b=>`<div style="display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-light)"><span style="flex:1;font-weight:600">${esc(b.name)}</span><button class="btn btn-sm" onclick="showRenBandModal('${b.id}')">✎</button><button class="btn btn-sm btn-danger" onclick="confirmDelBand('${b.id}')">✕</button></div>`).join('')||'<p style="color:var(--text2);font-size:13px">Nog geen bands.</p>'}</div>
+      <hr style="border:none;border-top:1px solid var(--border)">
+      <div class="fg"><label>Nieuwe band</label><input type="text" id="nb-name" placeholder="Bandnaam…"></div>
+    </div>
+    <div class="mf"><button class="btn" onclick="hideModal()">Sluiten</button><button class="btn btn-accent" onclick="doAddBand()">+ Aanmaken</button></div>`);
+  setTimeout(()=>document.getElementById('nb-name')?.focus(),40);
+}
+function doAddBand(){ const n=document.getElementById('nb-name')?.value.trim(); if(!n)return; addBand(n); hideModal() }
+function showRenBandModal(id){ const b=getBand(id); showModal(`<div class="mh"><span class="mt">Band hernoemen</span><button class="btn-ghost" onclick="showBandModal()">←</button></div><div class="mb"><div class="fg"><label>Naam</label><input type="text" id="rb-n" value="${esc(b.name)}"></div></div><div class="mf"><button class="btn" onclick="showBandModal()">Annuleren</button><button class="btn btn-accent" onclick="doRenBand('${id}')">Opslaan</button></div>`); setTimeout(()=>{const el=document.getElementById('rb-n');el?.focus();el?.select()},40) }
+function doRenBand(id){ const n=document.getElementById('rb-n')?.value.trim(); if(!n)return; updBand(id,n); showBandModal() }
+function confirmDelBand(id){ const b=getBand(id); showModal(`<div class="mh"><span class="mt">Band verwijderen</span><button class="btn-ghost" onclick="showBandModal()">←</button></div><div class="mb"><p>Verwijder <strong>${esc(b.name)}</strong>? Alle data van deze band wordt ook verwijderd.</p></div><div class="mf"><button class="btn" onclick="showBandModal()">Annuleren</button><button class="btn btn-accent" style="background:var(--danger)" onclick="delBand('${id}');hideModal()">Verwijderen</button></div>`) }
+
+function showSongModal(songId){
+  const s=songId?getSong(songId):null;
+  showModal(`<div class="mh"><span class="mt">${s?'Nummer bewerken':'Nummer toevoegen'}</span><button class="btn-ghost" onclick="hideModal()">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label>Titel *</label><input type="text" id="s-t" value="${esc(s?.title||'')}" placeholder="Titelnaam…"></div>
+      <div class="fr"><div class="fg"><label>Toonaard</label><input type="text" id="s-k" value="${esc(s?.key||'')}" placeholder="Am, C, G…"></div><div class="fg"><label>BPM</label><input type="number" id="s-b" value="${s?.bpm||''}" placeholder="120" min="1" max="400"></div></div>
+      <div class="fr"><div class="fg"><label>Stemming</label><input type="text" id="s-tu" value="${esc(s?.tuning||'E')}" placeholder="E, Drop D, Eb…"></div><div class="fg"><label>Duur (m:ss)</label><input type="text" id="s-d" value="${s?.dur?fmtDur(s.dur):''}" placeholder="3:45"></div></div>
+      <div class="fg"><label>Energie</label><select class="fsel" id="s-e"><option value="other"${(!s?.energy||s.energy==='other')?' selected':''}>–</option><option value="opener"${s?.energy==='opener'?' selected':''}>Opener</option><option value="uptempo"${s?.energy==='uptempo'?' selected':''}>Uptempo</option><option value="ballad"${s?.energy==='ballad'?' selected':''}>Ballad</option><option value="closer"${s?.energy==='closer'?' selected':''}>Closer</option></select></div>
+      <div class="fg"><label>Notities</label><textarea id="s-n" rows="2" placeholder="Algemene notities…">${esc(s?.notes||'')}</textarea></div>
+    </div>
+    <div class="mf">${songId?`<button class="btn btn-ghost btn-danger" onclick="confirmDelSong('${songId}')">Verwijderen</button>`:''}<span style="flex:1"></span><button class="btn" onclick="hideModal()">Annuleren</button><button class="btn btn-accent" onclick="saveSong(${songId?`'${songId}'`:'null'})">Opslaan</button></div>`);
+  setTimeout(()=>document.getElementById('s-t')?.focus(),40);
+}
+function saveSong(id){
+  const title=document.getElementById('s-t')?.value.trim(); if(!title){document.getElementById('s-t')?.focus();return}
+  const data={title,key:document.getElementById('s-k')?.value.trim(),bpm:parseInt(document.getElementById('s-b')?.value)||null,tuning:document.getElementById('s-tu')?.value.trim()||'E',dur:parseDur(document.getElementById('s-d')?.value),energy:document.getElementById('s-e')?.value,notes:document.getElementById('s-n')?.value.trim()};
+  if(id) updSong(id,data); else addSong(data);
+  hideModal();
+}
+function confirmDelSong(id){ const s=getSong(id); showModal(`<div class="mh"><span class="mt">Verwijderen</span><button class="btn-ghost" onclick="showSongModal('${id}')">←</button></div><div class="mb"><p>Verwijder <strong>${esc(s?.title)}</strong>? Het wordt ook uit alle setlists verwijderd.</p></div><div class="mf"><button class="btn" onclick="showSongModal('${id}')">Annuleren</button><button class="btn btn-accent" style="background:var(--danger)" onclick="delSong('${id}');hideModal()">Verwijderen</button></div>`) }
+
+function showNewSetModal(){ showModal(`<div class="mh"><span class="mt">Nieuwe setlist</span><button class="btn-ghost" onclick="hideModal()">✕</button></div><div class="mb"><div class="fg"><label>Naam</label><input type="text" id="ns-n" placeholder="Bijv. Optreden 15 okt…"></div></div><div class="mf"><button class="btn" onclick="hideModal()">Annuleren</button><button class="btn btn-accent" onclick="doAddSet()">Aanmaken</button></div>`); setTimeout(()=>document.getElementById('ns-n')?.focus(),40) }
+function doAddSet(){ const n=document.getElementById('ns-n')?.value.trim(); if(!n)return; addSet(n); hideModal() }
+function showRenSetModal(){ if(!S.setId)return; const sl=getSet(S.setId); showModal(`<div class="mh"><span class="mt">Setlist hernoemen</span><button class="btn-ghost" onclick="hideModal()">✕</button></div><div class="mb"><div class="fg"><label>Naam</label><input type="text" id="rs-n" value="${esc(sl?.name||'')}"></div></div><div class="mf"><button class="btn" onclick="hideModal()">Annuleren</button><button class="btn btn-accent" onclick="doRenSet()">Opslaan</button></div>`); setTimeout(()=>{const el=document.getElementById('rs-n');el?.focus();el?.select()},40) }
+function doRenSet(){ const n=document.getElementById('rs-n')?.value.trim(); if(!n)return; renSet(S.setId,n); hideModal() }
+function showDelSetModal(){ if(!S.setId)return; const sl=getSet(S.setId); showModal(`<div class="mh"><span class="mt">Setlist verwijderen</span><button class="btn-ghost" onclick="hideModal()">✕</button></div><div class="mb"><p>Verwijder <strong>${esc(sl?.name)}</strong>?</p></div><div class="mf"><button class="btn" onclick="hideModal()">Annuleren</button><button class="btn btn-accent" style="background:var(--danger)" onclick="delSet(S.setId);hideModal()">Verwijderen</button></div>`) }
+
+// ── EXPORT ──
+function showExportModal(){
+  if(!S.setId){toast('Geen setlist geselecteerd');return}
+  const sl=getSet(S.setId),band=getBand(S.bandId),its=setItems(S.setId);
+  let n=0;
+  const rows=its.map(it=>{
+    if(it.type==='song'){ const s=getSong(it.songId); if(!s)return ''; n++;
+      const tags=[s.key,s.bpm?s.bpm+' bpm':'',s.tuning||'E'].filter(Boolean).join(' · ');
+      return `<div class="exp-row"><span class="exp-n">${n}</span><span class="exp-s">${esc(s.title)}</span><span class="exp-t">${esc(tags)}</span></div>${it.hint?`<div class="exp-hint">💬 ${esc(it.hint)}</div>`:''}${it.note?`<div class="exp-hint">📝 ${esc(it.note)}</div>`:''}`;
+    } else if(it.type==='break'){
+      const durTxt=it.dur?` (${fmtDur(it.dur)})`:'';
+      return `<div class="exp-break">— ${esc(it.text||'Pauze')}${durTxt} —</div>`;
+    } else { return `<div class="exp-note-p">${esc(it.text)}</div>` }
+  }).join('');
+  window._expHtml=buildWordHtml(band,sl,its);
+  showModal(`<div class="mh"><span class="mt">Exporteer naar Word</span><button class="btn-ghost" onclick="hideModal()">✕</button></div>
+    <div class="mb">
+      <p style="font-size:13px;color:var(--text2)">Klik "Kopieer", plak dan in Word (Ctrl+V / Cmd+V).</p>
+      <div class="exp-wrap" id="exp-p"><div class="exp-head">${esc(band?.name||'')}</div><div class="exp-sub">${esc(sl?.name||'')} · ${new Date().toLocaleDateString('nl-BE',{day:'numeric',month:'long',year:'numeric'})}</div>${rows}</div>
+    </div>
+    <div class="mf"><button class="btn" onclick="hideModal()">Sluiten</button><button class="btn btn-accent" onclick="doCopy()">📋 Kopieer naar klembord</button></div>`);
+}
+function buildWordHtml(band,sl,its){
+  const date=new Date().toLocaleDateString('nl-BE',{day:'numeric',month:'long',year:'numeric'});
+  let n=0,rows='';
+  its.forEach(it=>{
+    if(it.type==='song'){ const s=getSong(it.songId); if(!s)return; n++;
+      rows+=`<tr><td style="text-align:right;color:#888;padding:5px 8px;border:1px solid #ddd;font-size:12px">${n}</td><td style="padding:5px 8px;border:1px solid #ddd;font-weight:bold">${esc(s.title)}</td><td style="text-align:center;padding:5px 8px;border:1px solid #ddd">${esc(s.key||'')}</td><td style="text-align:center;padding:5px 8px;border:1px solid #ddd">${s.bpm||''}</td><td style="text-align:center;padding:5px 8px;border:1px solid #ddd">${esc(s.tuning||'E')}</td><td style="text-align:center;padding:5px 8px;border:1px solid #ddd;color:#888">${fmtDur(s.dur)}</td></tr>`;
+      if(it.hint||it.note) rows+=`<tr><td style="border:1px solid #ddd"></td><td colspan="5" style="padding:3px 8px;border:1px solid #ddd;font-size:12px;color:#666">${it.hint?`<em>💬 ${esc(it.hint)}</em>`:''}${it.hint&&it.note?'<br>':''}${it.note?`📝 ${esc(it.note)}`:''}</td></tr>`;
+    } else if(it.type==='break'){
+      const durTxt=it.dur?` (${fmtDur(it.dur)})`:'';
+      rows+=`<tr><td colspan="6" style="text-align:center;padding:7px;border:1px solid #ddd;font-style:italic;color:#888;background:#f8f8f8">— ${esc(it.text||'Pauze')}${durTxt} —</td></tr>`;
+    } else if(it.type==='note'&&it.text){ rows+=`<tr><td colspan="6" style="padding:5px 8px;border:1px solid #ddd;font-style:italic;color:#555">${esc(it.text)}</td></tr>` }
+  });
+  return `<html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;margin:24px}h1{font-size:22px;margin-bottom:3px}h2{font-size:14px;font-weight:normal;color:#666;margin-bottom:18px}table{border-collapse:collapse;width:100%}th{background:#222;color:#fff;padding:7px 8px;text-align:left;font-size:12px;border:1px solid #ddd}</style></head><body><h1>${esc(band?.name||'')}</h1><h2>${esc(sl?.name||'')} · ${date}</h2><table><thead><tr><th>#</th><th>Nummer</th><th>Toonaard</th><th>BPM</th><th>Stemming</th><th>Duur</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+}
+async function doCopy(){
+  try{
+    await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([window._expHtml],{type:'text/html'})})]);
+    hideModal(); toast('Gekopieerd! Plak in Word met Ctrl+V / Cmd+V');
+  }catch(e){
+    try{ const p=document.getElementById('exp-p'); const r=document.createRange(); r.selectNodeContents(p); const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Geselecteerd — kopieer met Ctrl+C') }
+    catch(e2){ toast('Kopieer handmatig uit het venster') }
+  }
+}
+
+// ── DATA ──
+function showDataModal(){
+  showModal(`<div class="mh"><span class="mt">Data beheren</span><button class="btn-ghost" onclick="hideModal()">✕</button></div>
+    <div class="mb">
+      <p style="font-size:13px;color:var(--text2)">Exporteer all je data als JSON voor backup of migratie naar een online versie.</p>
+      <button class="btn btn-accent" onclick="exportData()" style="width:100%">⬇ Exporteer data (kopieer JSON)</button>
+      <hr style="border:none;border-top:1px solid var(--border)">
+      <div class="fg"><label>Importeer data</label><textarea id="imp-j" class="di" rows="5" placeholder="Plak hier je geëxporteerde JSON…"></textarea></div>
+      <button class="btn" onclick="importData()" style="width:100%">⬆ Importeer data</button>
+    </div>
+    <div class="mf"><button class="btn" onclick="hideModal()">Sluiten</button></div>`);
+}
+function exportData(){
+  const data=JSON.stringify({bands:S.bands,songs:S.songs,setlists:S.setlists,items:S.items},null,2);
+  navigator.clipboard.writeText(data).then(()=>{ document.getElementById('imp-j').value=data; toast('Gekopieerd naar klembord!') }).catch(()=>{ document.getElementById('imp-j').value=data; toast('Kopieer de tekst in het veld') });
+}
+function importData(){
+  const raw=document.getElementById('imp-j')?.value.trim(); if(!raw){toast('Geen data');return}
+  try{
+    const d=JSON.parse(raw); if(!d.bands||!d.songs){toast('Ongeldige data');return}
+    if(!confirm('Dit vervangt alle huidige data. Doorgaan?'))return;
+    S.bands=d.bands||[];S.songs=d.songs||[];S.setlists=d.setlists||[];S.items=d.items||[];
+    S.bandId=S.bands[0]?.id||null; S.setId=S.bandId?bandSets(S.bandId)[0]?.id||null:null;
+    save();render();hideModal();toast('Data geïmporteerd!');
+  }catch(e){toast('Fout: controleer de JSON')}
+}
+
+// ── TOAST ──
+let _tt=null;
+function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),2800) }
+
+// ── DEMO ──
+function seedDemo(){
+  const bid=uid(); S.bands.push({id:bid,name:'De Voorbeeldband'}); S.bandId=bid;
+  const songs=[
+    {id:uid(),bandId:bid,title:'Opener Riff',key:'Em',bpm:140,tuning:'Drop D',dur:195,energy:'opener',notes:''},
+    {id:uid(),bandId:bid,title:'Ride the Groove',key:'A',bpm:128,tuning:'E',dur:240,energy:'uptempo',notes:''},
+    {id:uid(),bandId:bid,title:'Still Waters',key:'D',bpm:72,tuning:'E',dur:285,energy:'ballad',notes:'Capo 2'},
+    {id:uid(),bandId:bid,title:'Back to Black',key:'Dm',bpm:108,tuning:'Drop D',dur:220,energy:'uptempo',notes:''},
+    {id:uid(),bandId:bid,title:'Last Call',key:'G',bpm:120,tuning:'E',dur:210,energy:'closer',notes:''},
+  ];
+  S.songs.push(...songs);
+  const sid=uid(); S.setlists.push({id:sid,bandId:bid,name:'Optreden 15 okt ★'}); S.setId=sid;
+  S.items.push(
+    {id:uid(),setId:sid,type:'song',songId:songs[0].id,pos:0,hint:'Starten zonder intro, direct inzetten.',note:''},
+    {id:uid(),setId:sid,type:'song',songId:songs[1].id,pos:1,hint:'',note:''},
+    {id:uid(),setId:sid,type:'break',text:'Pauze',dur:300,pos:2},
+    {id:uid(),setId:sid,type:'song',songId:songs[2].id,pos:3,hint:'Kort verhaal over het nummer.',note:'Capo 2'},
+    {id:uid(),setId:sid,type:'song',songId:songs[3].id,pos:4,hint:'',note:''},
+    {id:uid(),setId:sid,type:'song',songId:songs[4].id,pos:5,hint:'Bedanken, vol gas einde.',note:''},
+  );
+  save();
+}
+
+// ── EVENTS ──
+document.getElementById('band-sel').addEventListener('change',e=>{ S.bandId=e.target.value||null; S.setId=bandSets(S.bandId)[0]?.id||null; save(); render() });
+document.getElementById('btn-band-mgr').addEventListener('click',showBandModal);
+document.getElementById('set-sel').addEventListener('change',e=>{ S.setId=e.target.value||null; save(); render() });
+document.getElementById('btn-set-add').addEventListener('click',()=>{ if(!S.bandId){toast('Kies eerst een band');return} showNewSetModal() });
+document.getElementById('btn-set-dup').addEventListener('click',()=>{ if(!S.setId){toast('Geen setlist geselecteerd');return} dupSet(S.setId) });
+document.getElementById('btn-set-ren').addEventListener('click',showRenSetModal);
+document.getElementById('btn-set-del').addEventListener('click',showDelSetModal);
+document.getElementById('btn-add-break').addEventListener('click',addBreak);
+document.getElementById('btn-add-note').addEventListener('click',addNote);
+document.getElementById('btn-new-song').addEventListener('click',()=>{ if(!S.bandId){toast('Kies eerst een band');return} showSongModal(null) });
+document.getElementById('filt-avail').addEventListener('click',()=>setFilter('avail'));
+document.getElementById('filt-all').addEventListener('click',()=>setFilter('all'));
+document.getElementById('btn-export').addEventListener('click',showExportModal);
+document.getElementById('btn-data').addEventListener('click',showDataModal);
+document.getElementById('overlay').addEventListener('click',e=>{ if(e.target===e.currentTarget)hideModal() });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')hideModal() });
+document.getElementById('tab-set').addEventListener('click',()=>{ document.getElementById('tab-set').classList.add('on'); document.getElementById('tab-lib').classList.remove('on'); document.getElementById('set-panel').classList.remove('mob-hide'); document.getElementById('lib-panel').classList.remove('mob-show') });
+document.getElementById('tab-lib').addEventListener('click',()=>{ document.getElementById('tab-lib').classList.add('on'); document.getElementById('tab-set').classList.remove('on'); document.getElementById('set-panel').classList.add('mob-hide'); document.getElementById('lib-panel').classList.add('mob-show') });
+
+// ── INIT ──
+load();
+if(!S.bands.length) seedDemo();
+if(S.bandId&&!getBand(S.bandId)){ S.bandId=S.bands[0]?.id||null; S.setId=null }
+if(S.setId&&!getSet(S.setId)){ S.setId=bandSets(S.bandId)[0]?.id||null }
+checkAuth();
+render();
+</script>
