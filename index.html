@@ -258,7 +258,8 @@ textarea{resize:vertical;min-height:72px}
       <button class="btn-icon btn-danger" id="btn-set-del" title="Verwijderen">✕</button>
     </div>
     <div class="hsp"></div>
-    <button class="btn" id="btn-data" title="Data importeren/exporteren" style="font-size:15px;padding:5px 9px">💾</button>
+    <span id="sync-badge" style="font-size:11px;font-weight:600;display:none"></span>
+    <button class="btn" id="btn-data" title="Data &amp; Cloud Sync" style="font-size:15px;padding:5px 9px">💾</button>
     <button class="btn btn-accent" id="btn-export">↓ Word</button>
   </header>
 
@@ -334,7 +335,15 @@ const SK = 'setlist-v4';
 let S = { bands:[], songs:[], setlists:[], items:[], bandId:null, setId:null, filter:'avail' };
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6) }
-function save(){ try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){} }
+function save(){
+  try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){}
+  if(fbUrl()){
+    setSyncStatus('syncing');
+    fbSave({bands:S.bands,songs:S.songs,setlists:S.setlists,items:S.items}).then(ok=>{
+      setSyncStatus(ok?'ok':'err');
+    });
+  }
+}
 function load(){ try{ const d=JSON.parse(localStorage.getItem(SK)||'null'); if(d)Object.assign(S,d) }catch(e){} }
 
 function getBand(id){ return S.bands.find(b=>b.id===id) }
@@ -693,17 +702,98 @@ async function doCopy(){
   }
 }
 
+// ── FIREBASE SYNC ──
+const FB_CFG_KEY = 'sl-firebase-cfg';
+let fbCfg = null;
+try { fbCfg = JSON.parse(localStorage.getItem(FB_CFG_KEY)||'null') } catch(e){}
+
+function fbUrl(){ return fbCfg?.url?.replace(/\/+$/,'') || null }
+function fbAuth(){ return fbCfg?.secret || null }
+
+async function fbSave(data){
+  const url=fbUrl(), auth=fbAuth(); if(!url||!auth) return;
+  try{
+    const r = await fetch(`${url}/setlist.json?auth=${encodeURIComponent(auth)}`,{
+      method:'PUT', body:JSON.stringify(data), headers:{'Content-Type':'application/json'}
+    });
+    if(!r.ok){ console.warn('Firebase save error',r.status); return false }
+    return true;
+  }catch(e){ console.warn('Firebase save failed',e); return false }
+}
+
+async function fbLoad(){
+  const url=fbUrl(), auth=fbAuth(); if(!url||!auth) return null;
+  try{
+    const r = await fetch(`${url}/setlist.json?auth=${encodeURIComponent(auth)}`);
+    if(!r.ok) return null;
+    return await r.json();
+  }catch(e){ return null }
+}
+
+async function fbTest(url, secret){
+  try{
+    const r = await fetch(`${url.replace(/\/+$/,'')}/setlist-test.json?auth=${encodeURIComponent(secret)}`,{
+      method:'PUT', body:JSON.stringify({ok:true}), headers:{'Content-Type':'application/json'}
+    });
+    return r.ok;
+  }catch(e){ return false }
+}
+
+let _syncBadge = null;
+function setSyncStatus(s){ // 'ok' | 'err' | 'syncing' | 'off'
+  const el = document.getElementById('sync-badge');
+  if(!el) return;
+  const map = {ok:['☁ Synced','var(--success)'],err:['☁ Fout','var(--danger)'],syncing:['☁ …','var(--text3)'],off:['','']};
+  const [txt,col] = map[s]||['',''];
+  el.textContent = txt; el.style.color = col; el.style.display = txt ? '' : 'none';
+}
+
 // ── DATA ──
 function showDataModal(){
-  showModal(`<div class="mh"><span class="mt">Data beheren</span><button class="btn-ghost" onclick="hideModal()">✕</button></div>
+  const cfg = fbCfg || {};
+  const connected = !!(cfg.url && cfg.secret);
+  showModal(`<div class="mh"><span class="mt">Data &amp; Cloud Sync</span><button class="btn-ghost" onclick="hideModal()">✕</button></div>
     <div class="mb">
-      <p style="font-size:13px;color:var(--text2)">Exporteer all je data als JSON voor backup of migratie naar een online versie.</p>
-      <button class="btn btn-accent" onclick="exportData()" style="width:100%">⬇ Exporteer data (kopieer JSON)</button>
+      <div style="background:var(--accent-bg);border:1.5px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-weight:600;font-size:13px">☁ Firebase Cloud Sync</div>
+        <div style="font-size:12.5px;color:var(--text2)">Sla data op in Firebase zodat alle browsers dezelfde data zien. <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent)">→ Firebase Console</a></div>
+        <div class="fg"><label>Database URL</label><input type="text" id="fb-url" value="${esc(cfg.url||'')}" placeholder="https://mijn-project-default-rtdb.firebaseio.com"></div>
+        <div class="fg"><label>Database Secret</label><input type="password" id="fb-sec" value="${esc(cfg.secret||'')}" placeholder="Plak hier het secret…" autocomplete="off"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-accent btn-sm" onclick="saveFbConfig()">Opslaan &amp; testen</button>
+          ${connected?`<button class="btn btn-sm btn-danger btn-ghost" onclick="clearFbConfig()">Verbinding verwijderen</button>`:''}
+          <span id="fb-status" style="font-size:12px;color:var(--text2)">${connected?'✓ Geconfigureerd':''}</span>
+        </div>
+      </div>
       <hr style="border:none;border-top:1px solid var(--border)">
-      <div class="fg"><label>Importeer data</label><textarea id="imp-j" class="di" rows="5" placeholder="Plak hier je geëxporteerde JSON…"></textarea></div>
-      <button class="btn" onclick="importData()" style="width:100%">⬆ Importeer data</button>
+      <p style="font-size:12.5px;color:var(--text2)">Of exporteer je data als JSON voor backup.</p>
+      <button class="btn btn-sm" onclick="exportData()" style="width:100%">⬇ Exporteer data (kopieer JSON)</button>
+      <div class="fg" style="margin-top:8px"><label>Importeer data</label><textarea id="imp-j" class="di" rows="4" placeholder="Plak hier je geëxporteerde JSON…"></textarea></div>
+      <button class="btn btn-sm" onclick="importData()" style="width:100%">⬆ Importeer data</button>
     </div>
     <div class="mf"><button class="btn" onclick="hideModal()">Sluiten</button></div>`);
+}
+async function saveFbConfig(){
+  const url=document.getElementById('fb-url')?.value.trim();
+  const secret=document.getElementById('fb-sec')?.value.trim();
+  const st=document.getElementById('fb-status');
+  if(!url||!secret){if(st)st.textContent='Vul beide velden in';return}
+  if(st)st.textContent='Testen…';
+  const ok = await fbTest(url,secret);
+  if(ok){
+    fbCfg={url,secret}; localStorage.setItem(FB_CFG_KEY,JSON.stringify(fbCfg));
+    if(st)st.textContent='✓ Verbonden!';
+    await fbSave({bands:S.bands,songs:S.songs,setlists:S.setlists,items:S.items});
+    toast('Cloud sync actief!');
+    setSyncStatus('ok');
+  } else {
+    if(st)st.textContent='✗ Verbinding mislukt — controleer URL en secret';
+    setSyncStatus('err');
+  }
+}
+function clearFbConfig(){
+  if(!confirm('Cloud sync verwijderen?'))return;
+  fbCfg=null; localStorage.removeItem(FB_CFG_KEY); setSyncStatus('off'); showDataModal();
 }
 function exportData(){
   const data=JSON.stringify({bands:S.bands,songs:S.songs,setlists:S.setlists,items:S.items},null,2);
@@ -774,4 +864,34 @@ if(S.bandId&&!getBand(S.bandId)){ S.bandId=S.bands[0]?.id||null; S.setId=null }
 if(S.setId&&!getSet(S.setId)){ S.setId=bandSets(S.bandId)[0]?.id||null }
 checkAuth();
 render();
+
+// Load from Firebase after render (non-blocking)
+(async()=>{
+  if(!fbUrl()) return;
+  setSyncStatus('syncing');
+  const remote = await fbLoad();
+  if(remote && remote.bands){
+    Object.assign(S, {bands:remote.bands||[], songs:remote.songs||[], setlists:remote.setlists||[], items:remote.items||[]});
+    try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){}
+    if(S.bandId&&!getBand(S.bandId)){ S.bandId=S.bands[0]?.id||null; S.setId=null }
+    if(S.setId&&!getSet(S.setId)){ S.setId=S.bandId?bandSets(S.bandId)[0]?.id||null:null }
+    render();
+    setSyncStatus('ok');
+  } else {
+    setSyncStatus(remote===null?'err':'ok');
+  }
+})();
+
+// Auto-refresh every 30s
+setInterval(async()=>{
+  if(!fbUrl()) return;
+  const remote = await fbLoad();
+  if(remote && remote.bands){
+    Object.assign(S, {bands:remote.bands||[], songs:remote.songs||[], setlists:remote.setlists||[], items:remote.items||[]});
+    try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){}
+    if(S.bandId&&!getBand(S.bandId)){ S.bandId=S.bands[0]?.id||null; S.setId=null }
+    if(S.setId&&!getSet(S.setId)){ S.setId=S.bandId?bandSets(S.bandId)[0]?.id||null:null }
+    render(); setSyncStatus('ok');
+  }
+}, 30000);
 </script>
