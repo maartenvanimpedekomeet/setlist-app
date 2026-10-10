@@ -136,7 +136,7 @@ button{cursor:pointer;font:inherit;border:none;border-radius:var(--r-sm);display
 .si-break{background:transparent;border:1.5px dashed var(--border);box-shadow:none}
 .si-break:hover{box-shadow:none;border-color:var(--text3)}
 .break-inner{display:flex;align-items:center;gap:8px;padding:7px 10px;min-width:0}
-.bi-text{flex:1 1 0;min-width:0;background:transparent;border:none;font:inherit;font-style:italic;color:var(--text);font-size:13.5px;line-height:1.55;outline:none;resize:none;overflow:hidden;padding:2px 0;height:28px}
+.bi-text{flex:1 1 0;min-width:0;background:transparent;border:none;font:inherit;font-style:italic;color:var(--text);font-size:13.5px;line-height:1.55;outline:none;resize:none;overflow:hidden;padding:2px 0;min-height:24px}
 .bi-text:focus{border-bottom:1.5px solid var(--accent)}
 .bi-text::placeholder{color:var(--text3)}
 .break-dur{flex:0 0 52px;width:52px;background:var(--card2);border:1.5px solid var(--border-light);border-radius:var(--r-sm);padding:3px 6px;font:inherit;font-size:11.5px;color:var(--text3);text-align:center;font-variant-numeric:tabular-nums}
@@ -218,8 +218,8 @@ textarea{resize:vertical;min-height:72px}
   .mob-tab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:transparent;border-bottom:2.5px solid transparent}
   .mob-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
   .set-panel.mob-hide{display:none}
-  .drag-h{display:none}
-  .sort-btns{display:flex;gap:1px}
+  .drag-h{display:flex;opacity:.5;font-size:20px;padding:10px 6px;touch-action:none;cursor:grab}
+  .sort-btns{display:none}
   select{min-width:100px;max-width:145px}
   .header{padding:0 10px;gap:6px}
 }
@@ -376,7 +376,7 @@ function tuningColor(tuning){
 }
 
 // ── RENDER ──
-function render(){ rBands(); rSets(); rSetlist(); rLib() }
+function render(){ rBands(); rSets(); rSetlist(); rLib(); setTimeout(()=>{ autoHAll(); initTouchDrag() },0) }
 
 function rBands(){
   const el=document.getElementById('band-sel');
@@ -480,7 +480,7 @@ function buildItem(item,idx,all){
     const durVal=item.dur?fmtDur(item.dur):'';
     el.innerHTML=`<div class="break-inner">
       <span class="drag-h">⠿</span>${sortB}
-      <textarea class="bi-text" rows="1" placeholder="Bindtekst / pauze-omschrijving…" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onchange="updItem('${item.id}','text',this.value)" onclick="event.stopPropagation()">${esc(item.text||'')}</textarea>
+      <textarea class="bi-text" rows="1" placeholder="Bindtekst / pauze-omschrijving…" oninput="autoH(this)" onchange="updItem('${item.id}','text',this.value)" onclick="event.stopPropagation()">${esc(item.text||'')}</textarea>
       <input type="text" class="break-dur" value="${esc(durVal)}" placeholder="0:00" title="Duur (m:ss)" onchange="updBreakDur('${item.id}',this.value)" onclick="event.stopPropagation()">
       <button class="btn-ghost btn-sm btn-danger" onclick="removeItem('${item.id}')">✕</button>
     </div>`;
@@ -821,6 +821,57 @@ document.getElementById('overlay').addEventListener('click',e=>{ if(e.target===e
 document.addEventListener('keydown',e=>{ if(e.key==='Escape')hideModal() });
 document.getElementById('tab-set').addEventListener('click',()=>{ document.getElementById('tab-set').classList.add('on'); document.getElementById('tab-lib').classList.remove('on'); document.getElementById('set-panel').classList.remove('mob-hide'); document.getElementById('lib-panel').classList.remove('mob-show') });
 document.getElementById('tab-lib').addEventListener('click',()=>{ document.getElementById('tab-lib').classList.add('on'); document.getElementById('tab-set').classList.remove('on'); document.getElementById('set-panel').classList.add('mob-hide'); document.getElementById('lib-panel').classList.add('mob-show') });
+
+// ── AUTO HEIGHT ──
+function autoH(el){ el.style.height='auto'; el.style.height=el.scrollHeight+'px' }
+function autoHAll(){ document.querySelectorAll('.bi-text').forEach(autoH) }
+
+// ── TOUCH DRAG ──
+let tDragId=null, tDragEl=null;
+function initTouchDrag(){
+  document.querySelectorAll('#set-items .si').forEach(si=>{
+    const h=si.querySelector('.drag-h');
+    if(!h) return;
+    h.addEventListener('touchstart',e=>{
+      e.preventDefault();
+      tDragId=si.dataset.id; tDragEl=si;
+      si.classList.add('dragging');
+    },{passive:false});
+  });
+  document.addEventListener('touchmove',e=>{
+    if(!tDragId) return;
+    e.preventDefault();
+    const t=e.touches[0];
+    tDragEl.style.opacity='0.01';
+    const below=document.elementFromPoint(t.clientX,t.clientY);
+    tDragEl.style.opacity='';
+    document.querySelectorAll('.drop-top,.drop-bottom').forEach(x=>x.classList.remove('drop-top','drop-bottom'));
+    const target=below?.closest('#set-items .si');
+    if(target&&target!==tDragEl){
+      const r=target.getBoundingClientRect();
+      const side=t.clientY<r.top+r.height/2?'top':'bottom';
+      target.classList.add(side==='top'?'drop-top':'drop-bottom');
+      dOvId=target.dataset.id; dSide=side;
+    }
+  },{passive:false});
+  document.addEventListener('touchend',e=>{
+    if(!tDragId) return;
+    tDragEl?.classList.remove('dragging');
+    if(dOvId&&dOvId!==tDragId){
+      const its=setItems(S.setId);
+      const fi=its.findIndex(i=>i.id===tDragId),ti=its.findIndex(i=>i.id===dOvId);
+      if(fi!==-1&&ti!==-1){
+        const moved=its.splice(fi,1)[0];
+        let ni=fi<ti?(dSide==='top'?ti-1:ti):(dSide==='top'?ti:ti+1);
+        ni=Math.max(0,Math.min(its.length,ni));
+        its.splice(ni,0,moved);
+        its.forEach((it,i)=>{const x=S.items.find(s=>s.id===it.id);if(x)x.pos=i});
+        save(); render();
+      }
+    }
+    cDrag(); tDragId=null; tDragEl=null;
+  });
+}
 
 function applyState(d){
   Object.assign(S,{bands:d.bands||[],songs:d.songs||[],setlists:d.setlists||[],items:d.items||[]});
