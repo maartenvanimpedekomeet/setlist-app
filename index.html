@@ -800,7 +800,7 @@ function seedDemo(){
     {id:uid(),setId:sid,type:'song',songId:songs[3].id,pos:4,hint:'',note:''},
     {id:uid(),setId:sid,type:'song',songId:songs[4].id,pos:5,hint:'Bedanken, vol gas einde.',note:''},
   );
-  save();
+  localSave(); // don't push to Firebase here — init handles that
 }
 
 // ── EVENTS ──
@@ -823,41 +823,46 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape')hideModal() });
 document.getElementById('tab-set').addEventListener('click',()=>{ document.getElementById('tab-set').classList.add('on'); document.getElementById('tab-lib').classList.remove('on'); document.getElementById('set-panel').classList.remove('mob-hide'); document.getElementById('lib-panel').classList.remove('mob-show') });
 document.getElementById('tab-lib').addEventListener('click',()=>{ document.getElementById('tab-lib').classList.add('on'); document.getElementById('tab-set').classList.remove('on'); document.getElementById('set-panel').classList.add('mob-hide'); document.getElementById('lib-panel').classList.add('mob-show') });
 
-// ── INIT ──
-load();
-if(!S.bands.length) seedDemo();
-if(S.bandId&&!getBand(S.bandId)){ S.bandId=S.bands[0]?.id||null; S.setId=null }
-if(S.setId&&!getSet(S.setId)){ S.setId=bandSets(S.bandId)[0]?.id||null }
-checkAuth();
-render();
+function applyState(d){
+  Object.assign(S,{bands:d.bands||[],songs:d.songs||[],setlists:d.setlists||[],items:d.items||[]});
+  try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){}
+  if(S.bandId&&!getBand(S.bandId)){ S.bandId=S.bands[0]?.id||null; S.setId=null }
+  if(S.setId&&!getSet(S.setId)){ S.setId=S.bandId?bandSets(S.bandId)[0]?.id||null:null }
+}
+function localSave(){ try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){} }
 
-// Load from Firebase after render (non-blocking)
+// ── INIT ──
+load(); // load localStorage as fallback
+checkAuth();
+render(); // show something immediately
+
 (async()=>{
-  if(!fbUrl()) return;
   setSyncStatus('syncing');
   const remote = await fbLoad();
-  if(remote && remote.bands){
-    Object.assign(S, {bands:remote.bands||[], songs:remote.songs||[], setlists:remote.setlists||[], items:remote.items||[]});
-    try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){}
-    if(S.bandId&&!getBand(S.bandId)){ S.bandId=S.bands[0]?.id||null; S.setId=null }
-    if(S.setId&&!getSet(S.setId)){ S.setId=S.bandId?bandSets(S.bandId)[0]?.id||null:null }
+  if(remote && remote.bands && remote.bands.length){
+    // Firebase has real data → use it (overrides anything in localStorage)
+    applyState(remote);
+    render();
+    setSyncStatus('ok');
+  } else if(!S.bands.length){
+    // Nothing anywhere → seed demo (save only locally first, then push to Firebase)
+    seedDemo();
     render();
     setSyncStatus('ok');
   } else {
-    setSyncStatus(remote===null?'err':'ok');
+    // localStorage had data, Firebase was empty/null → push localStorage to Firebase
+    await fbSave({bands:S.bands,songs:S.songs,setlists:S.setlists,items:S.items});
+    setSyncStatus('ok');
   }
 })();
 
-// Auto-refresh every 30s
+// Auto-refresh every 30s to pick up changes from other devices
 setInterval(async()=>{
-  if(!fbUrl()) return;
   const remote = await fbLoad();
-  if(remote && remote.bands){
-    Object.assign(S, {bands:remote.bands||[], songs:remote.songs||[], setlists:remote.setlists||[], items:remote.items||[]});
-    try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){}
-    if(S.bandId&&!getBand(S.bandId)){ S.bandId=S.bands[0]?.id||null; S.setId=null }
-    if(S.setId&&!getSet(S.setId)){ S.setId=S.bandId?bandSets(S.bandId)[0]?.id||null:null }
-    render(); setSyncStatus('ok');
+  if(remote && remote.bands && remote.bands.length){
+    applyState(remote);
+    render();
+    setSyncStatus('ok');
   }
 }, 30000);
 </script>
