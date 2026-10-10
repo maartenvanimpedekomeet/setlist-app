@@ -826,9 +826,11 @@ document.getElementById('tab-lib').addEventListener('click',()=>{ document.getEl
 
 function applyState(d){
   Object.assign(S,{bands:d.bands||[],songs:d.songs||[],setlists:d.setlists||[],items:d.items||[]});
+  // Ensure a band is selected (pick first if none)
+  if(!S.bandId||!getBand(S.bandId)) S.bandId=S.bands[0]?.id||null;
+  // Ensure a setlist is selected (pick first for this band if none)
+  if(!S.setId||!getSet(S.setId)) S.setId=S.bandId?bandSets(S.bandId)[0]?.id||null:null;
   try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){}
-  if(S.bandId&&!getBand(S.bandId)){ S.bandId=S.bands[0]?.id||null; S.setId=null }
-  if(S.setId&&!getSet(S.setId)){ S.setId=S.bandId?bandSets(S.bandId)[0]?.id||null:null }
 }
 function localSave(){ try{ localStorage.setItem(SK,JSON.stringify(S)) }catch(e){} }
 
