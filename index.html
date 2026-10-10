@@ -315,6 +315,7 @@ function checkAuth(){
 function showApp(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  render();
 }
 document.getElementById('pw-btn').addEventListener('click', doLogin);
 document.getElementById('pw-input').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin() });
